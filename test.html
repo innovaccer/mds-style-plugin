@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MDS Style Inspector Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .section h2 {
+            color: #666;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        
+        /* Hardcoded values that should be highlighted */
+        .hardcoded-spacing {
+            margin: 16px;
+            padding: 8px;
+            width: 200px;
+            height: 100px;
+        }
+        
+        .hardcoded-colors {
+            color: #333333;
+            background-color: rgb(255, 255, 255);
+            border: 2px solid #ff4444;
+        }
+        
+        .hardcoded-font {
+            font-size: 14px;
+            line-height: 1.5;
+            font-weight: bold;
+        }
+        
+        .hardcoded-border {
+            border-radius: 4px;
+            border-width: 2px;
+        }
+        
+        .hardcoded-position {
+            position: relative;
+            top: 10px;
+            left: 20px;
+            z-index: 1000;
+        }
+        
+        .hardcoded-opacity {
+            opacity: 0.8;
+        }
+        
+        /* Design tokens that should NOT be highlighted */
+        .design-tokens {
+            margin: var(--spacing-md);
+            color: var(--color-primary);
+            font-size: var(--font-size-body);
+            background-color: var(--color-background);
+        }
+        
+        .button {
+            padding: 12px 24px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        
+        .button:hover {
+            background-color: #45a049;
+        }
+        
+        .card {
+            background: white;
+            padding: 20px;
+            margin: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            width: 300px;
+            height: 150px;
+        }
+        
+        .info-box {
+            background-color: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            color: #1976d2;
+        }
+        
+        .warning-box {
+            background-color: #fff3e0;
+            border: 1px solid #ff9800;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            color: #e65100;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MDS Style Inspector Test Page</h1>
+        
+        <div class="section">
+            <h2>Hardcoded Spacing Values</h2>
+            <div class="hardcoded-spacing">
+                This element has hardcoded spacing values (margin: 16px, padding: 8px, width: 200px, height: 100px)
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Hardcoded Color Values</h2>
+            <div class="hardcoded-colors">
+                This element has hardcoded color values (color: #333333, background-color: rgb(255, 255, 255))
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Hardcoded Font Values</h2>
+            <div class="hardcoded-font">
+                This element has hardcoded font values (font-size: 14px, line-height: 1.5)
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Hardcoded Border Values</h2>
+            <div class="hardcoded-border">
+                This element has hardcoded border values (border-radius: 4px, border-width: 2px)
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Hardcoded Position Values</h2>
+            <div class="hardcoded-position">
+                This element has hardcoded position values (top: 10px, left: 20px, z-index: 1000)
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Hardcoded Opacity</h2>
+            <div class="hardcoded-opacity">
+                This element has hardcoded opacity (opacity: 0.8)
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Design Tokens (Should NOT be highlighted)</h2>
+            <div class="design-tokens">
+                This element uses design tokens (var(--spacing-md), var(--color-primary), etc.)
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Buttons with Hardcoded Values</h2>
+            <button class="button">Button with hardcoded padding and colors</button>
+            <button class="button">Another button</button>
+        </div>
+        
+        <div class="section">
+            <h2>Cards with Hardcoded Values</h2>
+            <div class="card">
+                <h3>Card Title</h3>
+                <p>This card has hardcoded width, height, padding, and border-radius values.</p>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Info and Warning Boxes</h2>
+            <div class="info-box">
+                This info box has hardcoded colors and spacing values.
+            </div>
+            <div class="warning-box">
+                This warning box also has hardcoded values that should be highlighted.
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Instructions</h2>
+            <p>To test the MDS Style Inspector extension:</p>
+            <ol>
+                <li>Load the extension in Chrome (chrome://extensions/ → Load unpacked)</li>
+                <li>Click the extension icon in the toolbar</li>
+                <li>Click "Start Inspection"</li>
+                <li>Elements with hardcoded CSS values should be highlighted with red borders</li>
+                <li>Elements using design tokens (var(--token)) should NOT be highlighted</li>
+            </ol>
+        </div>
+    </div>
+</body>
+</html> 
