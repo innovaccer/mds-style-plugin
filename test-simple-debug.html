@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Debug Test</title>
+    <style>
+        /* Developer styles */
+        .developer-element {
+            margin: 20px;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple Debug Test</h1>
+    
+    <!-- User agent styles (should NOT be highlighted) -->
+    <p>Default paragraph</p>
+    <button>Default button</button>
+    <input type="text" placeholder="Default input">
+    
+    <!-- Developer styles (should be highlighted) -->
+    <div class="developer-element">Developer styled element</div>
+    <p style="color: #333; font-size: 16px;">Inline styled paragraph</p>
+    
+    <script>
+        console.log('Test page loaded');
+        console.log('Elements to test:');
+        console.log('- Default paragraph (should NOT be highlighted)');
+        console.log('- Default button (should NOT be highlighted)');
+        console.log('- Default input (should NOT be highlighted)');
+        console.log('- Developer element (should be highlighted)');
+        console.log('- Inline styled paragraph (should be highlighted)');
+    </script>
+</body>
+</html> 

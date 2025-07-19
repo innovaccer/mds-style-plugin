@@ -6,6 +6,8 @@ A Chrome browser extension that inspects DOM elements for hardcoded CSS values a
 
 - **Real-time Inspection**: Scans all DOM elements for hardcoded CSS values
 - **Visual Highlighting**: Elements with hardcoded values are highlighted with a red border and warning label
+- **Smart Detection**: Only highlights developer-applied styles, ignoring user agent (browser default) styles
+- **Browser-Agnostic**: Works across all browsers without relying on hardcoded browser defaults
 - **Comprehensive Detection**: Detects hardcoded values for:
   - Spacing (margin, padding, width, height, etc.)
   - Colors (hex, rgb, rgba, hsl, hsla)
@@ -14,6 +16,7 @@ A Chrome browser extension that inspects DOM elements for hardcoded CSS values a
   - Z-index values
   - Opacity values
 - **Design Token Recognition**: Automatically recognizes CSS custom properties (`var(--token-name)`)
+- **User Agent Style Filtering**: Intelligently filters out browser default styles
 - **Live Updates**: Monitors DOM changes and inspects new elements automatically
 - **Statistics**: Shows count of hardcoded values found and elements inspected
 
@@ -65,6 +68,24 @@ A Chrome browser extension that inspects DOM elements for hardcoded CSS values a
 - `font-size: var(--font-size-body)`
 - `background-color: var(--color-background)`
 
+### User Agent Styles (Will NOT be highlighted):
+- Browser default button styles
+- Default form element styles
+- Default heading styles
+- Default paragraph and list styles
+- Any other browser-provided default styles
+
+## Browser-Agnostic Detection Methods
+
+The extension uses multiple browser-agnostic methods to distinguish between developer-applied styles and user agent styles:
+
+1. **Inline Style Detection**: Identifies explicitly set inline styles as developer-applied
+2. **Stylesheet Source Analysis**: Identifies styles coming from user agent stylesheets vs developer stylesheets
+3. **Baseline Comparison**: Creates baseline elements to compare against user agent defaults dynamically
+4. **Inheritance Tracking**: Follows style inheritance to determine the original source
+5. **CSS Cascade Analysis**: Analyzes CSS specificity and cascade to determine style sources
+6. **Dynamic User Agent Detection**: Uses runtime analysis instead of hardcoded browser defaults
+
 ## Configuration
 
 The extension can be customized by modifying the following files:
@@ -91,12 +112,15 @@ The following values are considered acceptable and won't trigger highlighting:
 - `auto` (automatic values)
 - `none` (no value)
 - CSS custom properties using `var(--token-name)`
+- User agent (browser default) styles
+- Inherited styles from user agent defaults
 
 ## Browser Compatibility
 
 - Chrome (recommended)
 - Chromium-based browsers (Edge, Brave, etc.)
 - Firefox (with modifications to manifest.json)
+- Safari (with modifications to manifest.json)
 
 ## Development
 
@@ -108,6 +132,7 @@ mds-style-inspector/
 ├── popup.js              # Popup logic
 ├── content.js            # Main inspection script
 ├── content.css           # Highlight styles
+├── test-user-agent.html  # Test file for user agent detection
 ├── icons/                # Extension icons
 └── README.md            # This file
 ```
@@ -117,6 +142,7 @@ mds-style-inspector/
 1. **StyleInspector Class** (`content.js`):
    - Main inspection logic
    - Pattern matching for hardcoded values
+   - Browser-agnostic user agent style detection
    - DOM monitoring and highlighting
 
 2. **Popup Interface** (`popup.html/js`):
@@ -130,6 +156,26 @@ mds-style-inspector/
    - Pulsing animation
    - Tooltips
 
+4. **Smart Detection Methods**:
+   - `isDeveloperAppliedStyle()`: Determines if a style is developer-applied
+   - `isStyleFromUserAgent()`: Detects user agent styles dynamically
+   - `isBaselineStyle()`: Compares against user agent defaults
+   - `isCascadeDeveloperStyle()`: Analyzes CSS cascade and specificity
+   - `getCSSRulesForElement()`: Analyzes stylesheet sources
+
+## Testing
+
+Use `test-user-agent.html` to test the browser-agnostic user agent detection:
+
+1. Load the test file in Chrome
+2. Activate the extension
+3. Start inspection
+4. Verify that:
+   - Elements with user agent styles are NOT highlighted
+   - Elements with developer-applied styles ARE highlighted
+   - Elements with design tokens are NOT highlighted
+   - Mixed elements show appropriate highlighting
+
 ## Troubleshooting
 
 ### Extension Not Working
@@ -138,9 +184,15 @@ mds-style-inspector/
 3. Check the browser console for any error messages
 
 ### No Elements Highlighted
-1. Ensure the page has elements with hardcoded CSS values
+1. Ensure the page has elements with developer-applied hardcoded CSS values
 2. Check that the inspection is active (green status in popup)
 3. Try refreshing the page and restarting inspection
+4. Verify that elements have actual developer styles, not just user agent defaults
+
+### Too Many Elements Highlighted
+1. The extension now filters out user agent styles automatically using browser-agnostic methods
+2. If you're still seeing too many highlights, check the console for detection logs
+3. The extension logs which styles are being filtered and why
 
 ### Performance Issues
 - The extension inspects all DOM elements, which can be resource-intensive on large pages
@@ -151,7 +203,7 @@ mds-style-inspector/
 
 1. Fork the repository
 2. Make your changes
-3. Test thoroughly
+3. Test thoroughly using the provided test files
 4. Submit a pull request
 
 ## License

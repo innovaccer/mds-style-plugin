@@ -264,51 +264,78 @@ class StyleInspector {
       'z-index', 'opacity'
     ];
 
-    for (const property of relevantProperties) {
-      const value = computedStyle.getPropertyValue(property);
-      
-      if (value && value !== 'initial' && value !== 'inherit' && value !== 'unset') {
-        // Check if the value contains hardcoded patterns
-        if (this.isHardcodedValue(value, property)) {
-          console.log(`Hardcoded value found: ${property}: ${value}`);
-          // Add more detailed logging for debugging
-          // if (element.id === 'hiddenButton' || element.className.includes('hidden-button')) {
-          //   console.log(`Hidden button hardcoded value: ${property} = ${value}`);
-          //   console.log('Element:', element);
-          //   console.log('Element classes:', element.className);
-          //   console.log('Element tag:', element.tagName);
-          // }
-          return true;
-        }
-      }
+    // Use the direct CSS rule analysis approach
+    const matchedRules = this.analyzeHardcodedRules(element, relevantProperties);
+    
+    if (matchedRules.length > 0) {
+      console.log(`Found ${matchedRules.length} hardcoded rules for element:`, element.tagName, element.className || 'no-class');
+      matchedRules.forEach(rule => {
+        console.log(`${rule.selector} → ${rule.property}: ${rule.value}`);
+      });
+      return true;
     }
 
     return false;
   }
 
-  isHardcodedValue(value, property) {
-    // Skip if value is 0 or auto
-    if (value === '0' || value === '0px' || value === 'auto' || value === 'none') {
+  analyzeHardcodedRules(element, relevantProperties) {
+    const matchedRules = [];
+
+    // Check inline styles
+    for (const prop of element.style) {
+      const value = element.style.getPropertyValue(prop).trim();
+      if (this.isHardcodedValue(value, prop, element)) {
+        matchedRules.push({ selector: 'inline', property: prop, value });
+      }
+    }
+
+    // Check all document stylesheets (external or <style> tags)
+    for (const sheet of document.styleSheets) {
+      let rules;
+      try {
+        rules = sheet.cssRules || sheet.rules;
+      } catch (e) {
+        // CORS-restricted stylesheet
+        continue;
+      }
+
+      for (const rule of rules) {
+        if (
+          rule.type === CSSRule.STYLE_RULE &&
+          rule.selectorText &&
+          element.matches(rule.selectorText)
+        ) {
+          for (const property of rule.style) {
+            const value = rule.style.getPropertyValue(property).trim();
+
+            if (this.isHardcodedValue(value, property, element)) {
+              matchedRules.push({
+                selector: rule.selectorText,
+                property,
+                value
+              });
+            }
+          }
+        }
+      }
+    }
+
+    return matchedRules;
+  }
+
+  isHardcodedValue(value, property, element) {
+    // Skip if value is empty, 0, auto, or none
+    if (!value || value === '0' || value === '0px' || value === 'auto' || value === 'none') {
       return false;
     }
 
-    // Skip common browser default values for buttons
-    // const browserDefaults = {
-    //   'padding': '2px 6px',
-    //   'font-size': '13.3333px',
-    //   'border': '2px outset buttonface',
-    //   'background-color': 'buttonface',
-    //   'color': 'buttontext'
-    // };
-    
-    // if (browserDefaults[property] && value === browserDefaults[property]) {
-    //   console.log(`Skipping browser default: ${property} = ${value}`);
-    //   return false;
-    // }
+    // Debug: Log the element and property being checked
+    console.log(`Checking ${property} = ${value} for element:`, element.tagName, element.className || 'no-class');
 
     // Check if value contains design tokens
     const hasTokens = this.tokenPatterns.some(pattern => pattern.test(value));
     if (hasTokens) {
+      console.log(`Skipping design token: ${property} = ${value}`);
       return false;
     }
 
@@ -387,9 +414,6 @@ class StyleInspector {
     console.log('Element data attribute:', element.getAttribute('data-mds-hardcoded'));
     console.log('Element computed style display:', window.getComputedStyle(element).display);
     console.log('Element computed style border:', window.getComputedStyle(element).border);
-    
-    // Add tooltip
-    // this.addTooltip(element);
     
     console.log('Element highlighted:', element);
   }
