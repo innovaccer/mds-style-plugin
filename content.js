@@ -199,7 +199,27 @@ class StyleInspector {
 
   inspectPage() {
     const allElements = document.querySelectorAll('*');
-    console.log(`Inspecting ${allElements.length} elements`);
+    console.log(`Found ${allElements.length} total elements`);
+    
+    // Debug: Log all elements being inspected vs skipped
+    console.log('Elements analysis:');
+    let inspectedCount = 0;
+    let skippedCount = 0;
+    
+    allElements.forEach((element, index) => {
+      const isStylable = !['HTML', 'BODY', 'SCRIPT', 'META', 'TITLE', 'STYLE', 'LINK', 'HEAD'].includes(element.tagName);
+      
+      if (isStylable) {
+        inspectedCount++;
+        console.log(`${inspectedCount}. INSPECTING: ${element.tagName}${element.className ? ' (class: ' + element.className + ')' : ''}${element.id ? ' (id: ' + element.id + ')' : ''}`);
+      } else {
+        skippedCount++;
+        console.log(`SKIPPED: ${element.tagName}${element.className ? ' (class: ' + element.className + ')' : ''}${element.id ? ' (id: ' + element.id + ')' : ''}`);
+      }
+    });
+    
+    console.log(`Will inspect ${inspectedCount} stylable elements, skip ${skippedCount} non-stylable elements`);
+    
     allElements.forEach(element => {
       this.inspectElement(element);
     });
@@ -211,6 +231,12 @@ class StyleInspector {
     }
     
     if (!element || element === document.documentElement || element === document.body) {
+      return;
+    }
+
+    // Skip non-stylable elements
+    const nonStylableTags = ['SCRIPT', 'META', 'TITLE', 'STYLE', 'LINK', 'HEAD'];
+    if (nonStylableTags.includes(element.tagName)) {
       return;
     }
 
