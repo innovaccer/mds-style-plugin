@@ -41,15 +41,23 @@ document.addEventListener('DOMContentLoaded', function() {
     chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
       chrome.tabs.sendMessage(tabs[0].id, {action: 'testHighlight'}, function(response) {
         if (response && response.success) {
-          console.log('Test highlight sent');
-          // Update stats after test
+          console.log('Test highlight completed');
+          // Update stats after test with a longer delay to ensure processing is complete
           setTimeout(() => {
             chrome.tabs.sendMessage(tabs[0].id, {action: 'getStatus'}, function(response) {
               if (response) {
+                // Show test results but keep UI in inactive state
                 updateUI(false, response.stats);
+                // Provide user feedback
+                status.textContent = `Test completed: Found ${response.stats.hardcodedCount} hardcoded values`;
+                status.className = 'status test-complete';
               }
             });
-          }, 100);
+          }, 200);
+        } else {
+          console.error('Test highlight failed');
+          status.textContent = 'Test failed - check console for errors';
+          status.className = 'status error';
         }
       });
     });

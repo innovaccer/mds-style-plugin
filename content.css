@@ -1,42 +1,15 @@
 /* MDS Style Inspector Highlight Styles */
-.mds-style-inspector-highlight {
-  /* outline: 3px solid #ff4444 !important;
-  outline-offset: 2px !important; */
-  position: relative !important;
-  z-index: 9999 !important;
-  /* box-shadow: 0 0 0 3px rgba(255, 68, 68, 0.3) !important; */
-  border: 2px dashed #ff4444 !important;
-}
-
-/* .mds-style-inspector-highlight::before {
-  content: "⚠️ Hardcoded CSS";
-  position: absolute;
-  top: -25px;
-  left: 0;
-  background: #ff4444;
-  color: white;
-  padding: 2px 6px;
-  font-size: 10px;
-  font-weight: bold;
-  border-radius: 3px;
-  white-space: nowrap;
-  z-index: 10000;
-  pointer-events: none;
-} */
 
 /* Animation for highlighting */
 @keyframes mds-highlight-pulse {
   0% {
     outline-color: #ff4444;
-    /* box-shadow: 0 0 0 3px rgba(255, 68, 68, 0.3); */
   }
   50% {
     outline-color: #ff6666;
-    /* box-shadow: 0 0 0 3px rgba(255, 68, 68, 0.5); */
   }
   100% {
     outline-color: #ff4444;
-    /* box-shadow: 0 0 0 3px rgba(255, 68, 68, 0.3); */
   }
 }
 
@@ -44,46 +17,9 @@
   animation: mds-highlight-pulse 2s ease-in-out infinite;
 }
 
-/* Tooltip styles */
-.mds-style-inspector-tooltip {
-  position: absolute;
-  background: #ff4444;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  z-index: 10000;
-  pointer-events: none;
-  white-space: nowrap;
-  opacity: 0;
-  transition: opacity 0.2s;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-/* Ensure highlights are visible even on dark backgrounds */
-.mds-style-inspector-highlight {
-  /* outline: 3px solid #ff4444 !important;
-  outline-offset: 2px !important; */
-  border: 2px dashed #ff4444 !important;
-}
-
-/* Make sure the highlight is visible on all elements */
-*[data-mds-hardcoded="true"] {
-  /* outline: 3px solid #ff4444 !important;
-  outline-offset: 2px !important; */
-  border: 2px dashed #ff4444 !important;
-}
-
-/* Additional debugging styles */
-.mds-style-inspector-highlight {
-  /* background-color: rgba(255, 68, 68, 0.1) !important; */
-}
-
-/* Force visibility */
+/* Force visibility with higher specificity */
 .mds-style-inspector-highlight,
 *[data-mds-hardcoded="true"] {
-  /* outline: 3px solid #ff4444 !important;
-  outline-offset: 2px !important; */
-  border: 2px dashed #ff4444 !important;
-  /* background-color: rgba(255, 68, 68, 0.1) !important; */
+  outline: 3px dotted #ff4444 !important;
+  outline-offset: 2px !important;
 } 

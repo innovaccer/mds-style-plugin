@@ -75,6 +75,10 @@ class StyleInspector {
     this.stats.inspectedCount = 0;
     this.inspectedElements.clear();
     
+    // Temporarily set isActive to true for the test
+    const wasActive = this.isActive;
+    this.isActive = true;
+    
     // Run inspection on all elements
     const allElements = document.querySelectorAll('*');
     console.log(`Test: Inspecting ${allElements.length} elements`);
@@ -88,6 +92,11 @@ class StyleInspector {
     });
     
     console.log(`Test: Found ${this.stats.hardcodedCount} elements with hardcoded values`);
+    
+    // Reset isActive to its previous state
+    this.isActive = wasActive;
+    
+    // Update stats
     this.updateStats();
   }
 
@@ -161,16 +170,31 @@ class StyleInspector {
               }
             }
           });
+        } else if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+          // Re-inspect element when its style changes (e.g., display: none -> display: inline-block)
+          const element = mutation.target;
+          if (element.nodeType === Node.ELEMENT_NODE) {
+            // Remove from inspected set so it gets re-inspected
+            this.inspectedElements.delete(element);
+            // Remove any existing highlight
+            element.classList.remove('mds-style-inspector-highlight');
+            element.removeAttribute('data-mds-hardcoded');
+            this.highlightedElements.delete(element);
+            // Re-inspect the element
+            this.inspectElement(element);
+          }
         }
       });
     });
 
     this.mutationObserver.observe(document.body, {
       childList: true,
-      subtree: true
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style']
     });
     
-    console.log('Mutation observer set up');
+    console.log('Mutation observer set up with style change detection');
   }
 
   inspectPage() {
@@ -200,6 +224,22 @@ class StyleInspector {
     this.stats.inspectedCount++;
     
     const computedStyle = window.getComputedStyle(element);
+    
+    // Debug: Log all computed styles for hidden button
+    // if (element.id === 'hiddenButton' || element.className.includes('hidden-button')) {
+    //   console.log('=== HIDDEN BUTTON DEBUG ===');
+    //   console.log('Element:', element);
+    //   console.log('Element classes:', element.className);
+    //   console.log('Element tag:', element.tagName);
+    //   console.log('Display:', computedStyle.display);
+    //   console.log('All computed styles for hidden button:');
+    //   const relevantProps = ['margin', 'padding', 'font-size', 'line-height', 'color', 'background-color', 'border-radius', 'border-width', 'width', 'height', 'z-index', 'opacity'];
+    //   relevantProps.forEach(prop => {
+    //     console.log(`${prop}: ${computedStyle.getPropertyValue(prop)}`);
+    //   });
+    //   console.log('=== END HIDDEN BUTTON DEBUG ===');
+    // }
+    
     const hasHardcodedValues = this.checkForHardcodedValues(computedStyle, element);
     
     if (hasHardcodedValues) {
@@ -231,6 +271,13 @@ class StyleInspector {
         // Check if the value contains hardcoded patterns
         if (this.isHardcodedValue(value, property)) {
           console.log(`Hardcoded value found: ${property}: ${value}`);
+          // Add more detailed logging for debugging
+          // if (element.id === 'hiddenButton' || element.className.includes('hidden-button')) {
+          //   console.log(`Hidden button hardcoded value: ${property} = ${value}`);
+          //   console.log('Element:', element);
+          //   console.log('Element classes:', element.className);
+          //   console.log('Element tag:', element.tagName);
+          // }
           return true;
         }
       }
@@ -244,6 +291,20 @@ class StyleInspector {
     if (value === '0' || value === '0px' || value === 'auto' || value === 'none') {
       return false;
     }
+
+    // Skip common browser default values for buttons
+    // const browserDefaults = {
+    //   'padding': '2px 6px',
+    //   'font-size': '13.3333px',
+    //   'border': '2px outset buttonface',
+    //   'background-color': 'buttonface',
+    //   'color': 'buttontext'
+    // };
+    
+    // if (browserDefaults[property] && value === browserDefaults[property]) {
+    //   console.log(`Skipping browser default: ${property} = ${value}`);
+    //   return false;
+    // }
 
     // Check if value contains design tokens
     const hasTokens = this.tokenPatterns.some(pattern => pattern.test(value));
@@ -320,6 +381,13 @@ class StyleInspector {
     // Add data attribute for identification
     element.setAttribute('data-mds-hardcoded', 'true');
     
+    // Debug: Check if the element is visible and has the class
+    console.log('Highlighting element:', element);
+    console.log('Element classes:', element.className);
+    console.log('Element data attribute:', element.getAttribute('data-mds-hardcoded'));
+    console.log('Element computed style display:', window.getComputedStyle(element).display);
+    console.log('Element computed style border:', window.getComputedStyle(element).border);
+    
     // Add tooltip
     // this.addTooltip(element);
     
@@ -372,9 +440,12 @@ class StyleInspector {
   }
 
   updateStats() {
+    // Send stats update to popup if it's open
     chrome.runtime.sendMessage({
       action: 'updateStats',
       stats: this.stats
+    }).catch(() => {
+      // Ignore errors if popup is not open
     });
   }
 }
