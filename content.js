@@ -154,6 +154,13 @@ class StyleInspector {
     this.inspectedElements = new Set(); // Track which elements we've already inspected
     this.tooltip = new StyleInspectorTooltip();
     
+    // Add debouncing and throttling properties
+    this.mutationDebounceTimer = null;
+    this.inspectionThrottleTimer = null;
+    this.pendingElements = new Set(); // Elements waiting to be inspected
+    this.lastInspectionTime = 0;
+    this.minInspectionInterval = 200; // Increased minimum interval to 200ms
+    
     // Define patterns for hardcoded values - using non-global regex for test()
     this.hardcodedPatterns = {
       // Spacing values (px, rem, em, etc.)
@@ -181,6 +188,16 @@ class StyleInspector {
       /var\(--[^)]+,\s*[^)]+\)/
     ];
     
+    // React-specific element filtering
+    this.reactElementPatterns = [
+      /^__react/,
+      /^react-/,
+      /^data-react/,
+      /^reactid$/,
+      /^react-devtools/,
+      /^react-/
+    ];
+    
     this.init();
   }
 
@@ -205,6 +222,30 @@ class StyleInspector {
           break;
       }
     });
+    
+    // Clean up when page is unloaded
+    window.addEventListener('beforeunload', () => {
+      this.cleanup();
+    });
+  }
+
+  cleanup() {
+    // Stop inspection if active
+    if (this.isActive) {
+      this.stopInspection();
+    }
+    
+    // Clear all timers
+    if (this.mutationDebounceTimer) {
+      clearTimeout(this.mutationDebounceTimer);
+    }
+    
+    if (this.inspectionThrottleTimer) {
+      clearTimeout(this.inspectionThrottleTimer);
+    }
+    
+    // Clear all tooltips
+    this.tooltip.clearAllTooltips();
   }
 
   testHighlight() {
@@ -284,11 +325,24 @@ class StyleInspector {
       console.log('Mutation observer disconnected');
     }
     
+    // Clear all timers
+    if (this.mutationDebounceTimer) {
+      clearTimeout(this.mutationDebounceTimer);
+      this.mutationDebounceTimer = null;
+    }
+    
+    if (this.inspectionThrottleTimer) {
+      clearTimeout(this.inspectionThrottleTimer);
+      this.inspectionThrottleTimer = null;
+    }
+    
     // Reset stats and tracking
     this.stats.hardcodedCount = 0;
     this.stats.inspectedCount = 0;
     this.inspectedElements.clear();
     this.hardcodedProperties.clear(); // Clear stored properties
+    this.pendingElements.clear(); // Clear pending elements
+    this.lastInspectionTime = 0;
     this.updateStats();
     
     console.log('MDS Style Inspector: Inspection stopped');
@@ -305,18 +359,15 @@ class StyleInspector {
         return;
       }
       
-      mutations.forEach((mutation) => {
-        if (mutation.type === 'childList') {
-          mutation.addedNodes.forEach((node) => {
-            if (node.nodeType === Node.ELEMENT_NODE) {
-              // Only inspect new elements that haven't been inspected before
-              if (!this.inspectedElements.has(node)) {
-                this.inspectElement(node);
-              }
-            }
-          });
-        }
-      });
+      // Clear existing debounce timer
+      if (this.mutationDebounceTimer) {
+        clearTimeout(this.mutationDebounceTimer);
+      }
+      
+      // Debounce mutations to prevent excessive processing
+      this.mutationDebounceTimer = setTimeout(() => {
+        this.processMutations(mutations);
+      }, 200); // Increased debounce delay to 200ms
     });
 
     this.mutationObserver.observe(document.body, {
@@ -324,7 +375,147 @@ class StyleInspector {
       subtree: true
     });
     
-    console.log('Mutation observer set up for new elements only');
+    console.log('Mutation observer set up with debouncing');
+  }
+
+  processMutations(mutations) {
+    const newElements = new Set();
+    
+    mutations.forEach((mutation) => {
+      if (mutation.type === 'childList') {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            // Filter out React internal elements and already inspected elements
+            if (this.shouldInspectElement(node)) {
+              newElements.add(node);
+            }
+          }
+        });
+      }
+    });
+    
+    // Add new elements to pending queue
+    newElements.forEach(element => {
+      this.pendingElements.add(element);
+    });
+    
+    // Throttle the inspection process
+    this.scheduleInspection();
+  }
+
+  shouldInspectElement(element) {
+    // Skip if already inspected
+    if (this.inspectedElements.has(element)) {
+      return false;
+    }
+    
+    // Skip inspector's own elements to prevent infinite loops
+    if (element.classList && (
+      element.classList.contains('mds-style-inspector-highlight') ||
+      element.classList.contains('mds-style-inspector-tooltip') ||
+      element.classList.contains('mds-style-inspector-tooltip-content')
+    )) {
+      return false;
+    }
+    
+    // Skip elements with inspector's data attributes
+    if (element.hasAttribute('data-mds-hardcoded')) {
+      return false;
+    }
+    
+    // Skip React internal elements
+    if (this.isReactInternalElement(element)) {
+      return false;
+    }
+    
+    // Skip non-stylable elements
+    const nonStylableTags = ['SCRIPT', 'META', 'TITLE', 'STYLE', 'LINK', 'HEAD', 'NOSCRIPT'];
+    if (nonStylableTags.includes(element.tagName)) {
+      return false;
+    }
+    
+    // Skip elements that are likely React internal
+    if (element.id && this.reactElementPatterns.some(pattern => pattern.test(element.id))) {
+      return false;
+    }
+    
+    // Skip elements with React-specific attributes
+    if (element.hasAttribute('data-reactroot') || 
+        element.hasAttribute('data-reactid') ||
+        element.hasAttribute('data-reactdevtools')) {
+      return false;
+    }
+    
+    return true;
+  }
+
+  isReactInternalElement(element) {
+    // Check for React-specific class names using classList (more reliable)
+    if (element.classList && element.classList.length > 0) {
+      return Array.from(element.classList).some(className => 
+        this.reactElementPatterns.some(pattern => pattern.test(className))
+      );
+    }
+    
+    // Fallback: check className if classList is not available
+    if (element.className) {
+      // Handle both string and DOMTokenList cases
+      let classes;
+      if (typeof element.className === 'string') {
+        classes = element.className.split(' ');
+      } else if (element.className instanceof DOMTokenList) {
+        classes = Array.from(element.className);
+      } else {
+        // Fallback: try to convert to string
+        classes = String(element.className).split(' ');
+      }
+      
+      return classes.some(className => 
+        this.reactElementPatterns.some(pattern => pattern.test(className))
+      );
+    }
+    
+    return false;
+  }
+
+  scheduleInspection() {
+    // Clear existing throttle timer
+    if (this.inspectionThrottleTimer) {
+      clearTimeout(this.inspectionThrottleTimer);
+    }
+    
+    // Throttle inspections to prevent excessive processing
+    this.inspectionThrottleTimer = setTimeout(() => {
+      this.processPendingElements();
+    }, 300); // Increased throttle delay to 300ms
+  }
+
+  processPendingElements() {
+    if (this.pendingElements.size === 0) {
+      return;
+    }
+    
+    const now = Date.now();
+    if (now - this.lastInspectionTime < this.minInspectionInterval) {
+      // Reschedule if we're still within the minimum interval
+      this.scheduleInspection();
+      return;
+    }
+    
+    this.lastInspectionTime = now;
+    
+    // Process up to 5 elements at a time to prevent blocking (reduced from 10)
+    const elementsToProcess = Array.from(this.pendingElements).slice(0, 5);
+    
+    elementsToProcess.forEach(element => {
+      this.pendingElements.delete(element);
+      this.inspectElement(element);
+    });
+    
+    // If there are more elements to process, schedule another batch
+    if (this.pendingElements.size > 0) {
+      this.scheduleInspection();
+    }
   }
 
   inspectPage() {
@@ -337,9 +528,10 @@ class StyleInspector {
     let skippedCount = 0;
     
     allElements.forEach((element, index) => {
-      const isStylable = !['HTML', 'BODY', 'SCRIPT', 'META', 'TITLE', 'STYLE', 'LINK', 'HEAD'].includes(element.tagName);
+      // Use the new filtering logic
+      const shouldInspect = this.shouldInspectElement(element);
       
-      if (isStylable) {
+      if (shouldInspect) {
         inspectedCount++;
         console.log(`${inspectedCount}. INSPECTING: ${element.tagName}${element.className ? ' (class: ' + element.className + ')' : ''}${element.id ? ' (id: ' + element.id + ')' : ''}`);
       } else {
@@ -350,9 +542,34 @@ class StyleInspector {
     
     console.log(`Will inspect ${inspectedCount} stylable elements, skip ${skippedCount} non-stylable elements`);
     
-    allElements.forEach(element => {
-      this.inspectElement(element);
-    });
+    // Process elements in batches to prevent blocking
+    const elementsToInspect = Array.from(allElements).filter(element => this.shouldInspectElement(element));
+    
+    // Process in batches of 20 to prevent blocking the UI
+    const batchSize = 20;
+    let currentBatch = 0;
+    
+    const processBatch = () => {
+      const start = currentBatch * batchSize;
+      const end = Math.min(start + batchSize, elementsToInspect.length);
+      const batch = elementsToInspect.slice(start, end);
+      
+      batch.forEach(element => {
+        this.inspectElement(element);
+      });
+      
+      currentBatch++;
+      
+      // If there are more elements to process, schedule the next batch
+      if (end < elementsToInspect.length) {
+        setTimeout(processBatch, 10); // Small delay between batches
+      }
+    };
+    
+    // Start processing batches
+    if (elementsToInspect.length > 0) {
+      processBatch();
+    }
   }
 
   inspectElement(element) {
@@ -364,14 +581,8 @@ class StyleInspector {
       return;
     }
 
-    // Skip non-stylable elements
-    const nonStylableTags = ['SCRIPT', 'META', 'TITLE', 'STYLE', 'LINK', 'HEAD'];
-    if (nonStylableTags.includes(element.tagName)) {
-      return;
-    }
-
-    // Skip if we've already inspected this element
-    if (this.inspectedElements.has(element)) {
+    // Use the new filtering logic instead of redundant checks
+    if (!this.shouldInspectElement(element)) {
       return;
     }
 
@@ -393,6 +604,20 @@ class StyleInspector {
   }
 
   checkForHardcodedValues(computedStyle, element) {
+    // Skip inspector's own elements
+    if (element.classList && (
+      element.classList.contains('mds-style-inspector-highlight') ||
+      element.classList.contains('mds-style-inspector-tooltip') ||
+      element.classList.contains('mds-style-inspector-tooltip-content')
+    )) {
+      return false;
+    }
+    
+    // Skip elements with inspector's data attributes
+    if (element.hasAttribute('data-mds-hardcoded')) {
+      return false;
+    }
+    
     const relevantProperties = [
       'margin', 'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
       'padding', 'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
@@ -423,6 +648,20 @@ class StyleInspector {
   }
 
   analyzeHardcodedRules(element, relevantProperties) {
+    // Skip inspector's own elements
+    if (element.classList && (
+      element.classList.contains('mds-style-inspector-highlight') ||
+      element.classList.contains('mds-style-inspector-tooltip') ||
+      element.classList.contains('mds-style-inspector-tooltip-content')
+    )) {
+      return [];
+    }
+    
+    // Skip elements with inspector's data attributes
+    if (element.hasAttribute('data-mds-hardcoded')) {
+      return [];
+    }
+    
     const matchedRules = [];
 
     // Check inline styles
@@ -473,13 +712,13 @@ class StyleInspector {
       return false;
     }
 
-    // Debug: Log the element and property being checked
-    console.log(`Checking ${property} = ${value} for element:`, element.tagName, element.className || 'no-class');
+    // Debug: Log the element and property being checked (only in verbose mode)
+    // console.log(`Checking ${property} = ${value} for element:`, element.tagName, element.className || 'no-class');
 
     // Check if value contains design tokens
     const hasTokens = this.tokenPatterns.some(pattern => pattern.test(value));
     if (hasTokens) {
-      console.log(`Skipping design token: ${property} = ${value}`);
+      // console.log(`Skipping design token: ${property} = ${value}`);
       return false;
     }
 
@@ -542,6 +781,20 @@ class StyleInspector {
   highlightElement(element) {
     if (this.highlightedElements.has(element)) {
       return; // Already highlighted
+    }
+    
+    // Additional safety check: don't highlight inspector's own elements
+    if (element.classList && (
+      element.classList.contains('mds-style-inspector-highlight') ||
+      element.classList.contains('mds-style-inspector-tooltip') ||
+      element.classList.contains('mds-style-inspector-tooltip-content')
+    )) {
+      return;
+    }
+    
+    // Additional safety check: don't highlight elements with inspector's data attributes
+    if (element.hasAttribute('data-mds-hardcoded')) {
+      return;
     }
 
     this.highlightedElements.add(element);
