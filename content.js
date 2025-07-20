@@ -1,14 +1,113 @@
 // MDS Style Inspector Content Script
+
+// Separate Tooltip Module
+class StyleInspectorTooltip {
+  constructor() {
+    this.activeTooltip = null;
+  }
+
+  createTooltip(element, hardcodedRules) {
+    if (!hardcodedRules || hardcodedRules.length === 0) {
+      return null;
+    }
+
+    // Create simple tooltip content
+    const tooltipContent = document.createElement('div');
+    tooltipContent.className = 'mds-style-inspector-tooltip-content';
+    
+    const title = document.createElement('div');
+    title.textContent = 'Hardcoded CSS Properties:';
+    title.style.cssText = `
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #fff;
+      font-size: 12px;
+    `;
+    tooltipContent.appendChild(title);
+    
+    // Show all hardcoded properties
+    hardcodedRules.forEach(rule => {
+      const propertyDiv = document.createElement('div');
+      propertyDiv.textContent = `${rule.selector} → ${rule.property}: ${rule.value}`;
+      propertyDiv.style.cssText = `
+        color: #fff;
+        font-family: monospace;
+        font-size: 10px;
+        margin-bottom: 2px;
+      `;
+      tooltipContent.appendChild(propertyDiv);
+    });
+    
+    // Create simple tooltip
+    const tooltip = document.createElement('div');
+    tooltip.className = 'mds-style-inspector-tooltip';
+    tooltip.style.cssText = `
+      position: absolute;
+      background: #333;
+      color: white;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      z-index: 10000;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+      max-width: 250px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      border: 1px solid #555;
+    `;
+    
+    tooltip.appendChild(tooltipContent);
+    document.body.appendChild(tooltip);
+    
+    return tooltip;
+  }
+
+  attachTooltip(element, hardcodedRules) {
+    const tooltip = this.createTooltip(element, hardcodedRules);
+    if (!tooltip) return;
+    
+    // Simple mouse events
+    element.addEventListener('mouseenter', () => {
+      const rect = element.getBoundingClientRect();
+      tooltip.style.left = rect.left + 'px';
+      tooltip.style.top = (rect.top - 30) + 'px';
+      tooltip.style.opacity = '1';
+    });
+    
+    element.addEventListener('mouseleave', () => {
+      tooltip.style.opacity = '0';
+    });
+    
+    // Store tooltip reference
+    element._mdsTooltip = tooltip;
+  }
+
+  removeTooltip(element) {
+    if (element._mdsTooltip) {
+      element._mdsTooltip.remove();
+      element._mdsTooltip = null;
+    }
+  }
+
+  clearAllTooltips() {
+    const tooltips = document.querySelectorAll('.mds-style-inspector-tooltip');
+    tooltips.forEach(tooltip => tooltip.remove());
+  }
+}
+
 class StyleInspector {
   constructor() {
     this.isActive = false;
     this.highlightedElements = new Set();
+    this.hardcodedProperties = new Map(); // Store hardcoded properties for each element
     this.stats = {
       hardcodedCount: 0,
       inspectedCount: 0
     };
     this.mutationObserver = null;
     this.inspectedElements = new Set(); // Track which elements we've already inspected
+    this.tooltip = new StyleInspectorTooltip();
     
     // Define patterns for hardcoded values - using non-global regex for test()
     this.hardcodedPatterns = {
@@ -144,6 +243,7 @@ class StyleInspector {
     this.stats.hardcodedCount = 0;
     this.stats.inspectedCount = 0;
     this.inspectedElements.clear();
+    this.hardcodedProperties.clear(); // Clear stored properties
     this.updateStats();
     
     console.log('MDS Style Inspector: Inspection stopped');
@@ -170,31 +270,16 @@ class StyleInspector {
               }
             }
           });
-        } else if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-          // Re-inspect element when its style changes (e.g., display: none -> display: inline-block)
-          const element = mutation.target;
-          if (element.nodeType === Node.ELEMENT_NODE) {
-            // Remove from inspected set so it gets re-inspected
-            this.inspectedElements.delete(element);
-            // Remove any existing highlight
-            element.classList.remove('mds-style-inspector-highlight');
-            element.removeAttribute('data-mds-hardcoded');
-            this.highlightedElements.delete(element);
-            // Re-inspect the element
-            this.inspectElement(element);
-          }
         }
       });
     });
 
     this.mutationObserver.observe(document.body, {
       childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['style']
+      subtree: true
     });
     
-    console.log('Mutation observer set up with style change detection');
+    console.log('Mutation observer set up for new elements only');
   }
 
   inspectPage() {
@@ -249,24 +334,8 @@ class StyleInspector {
     this.inspectedElements.add(element);
     this.stats.inspectedCount++;
     
-    const computedStyle = window.getComputedStyle(element);
-    
-    // Debug: Log all computed styles for hidden button
-    // if (element.id === 'hiddenButton' || element.className.includes('hidden-button')) {
-    //   console.log('=== HIDDEN BUTTON DEBUG ===');
-    //   console.log('Element:', element);
-    //   console.log('Element classes:', element.className);
-    //   console.log('Element tag:', element.tagName);
-    //   console.log('Display:', computedStyle.display);
-    //   console.log('All computed styles for hidden button:');
-    //   const relevantProps = ['margin', 'padding', 'font-size', 'line-height', 'color', 'background-color', 'border-radius', 'border-width', 'width', 'height', 'z-index', 'opacity'];
-    //   relevantProps.forEach(prop => {
-    //     console.log(`${prop}: ${computedStyle.getPropertyValue(prop)}`);
-    //   });
-    //   console.log('=== END HIDDEN BUTTON DEBUG ===');
-    // }
-    
-    const hasHardcodedValues = this.checkForHardcodedValues(computedStyle, element);
+    // Check for hardcoded values once and store the result
+    const hasHardcodedValues = this.checkForHardcodedValues(window.getComputedStyle(element), element);
     
     if (hasHardcodedValues) {
       this.highlightElement(element);
@@ -290,7 +359,7 @@ class StyleInspector {
       'z-index', 'opacity'
     ];
 
-    // Use the direct CSS rule analysis approach
+    // Use the direct CSS rule analysis approach - check once and store
     const matchedRules = this.analyzeHardcodedRules(element, relevantProperties);
     
     if (matchedRules.length > 0) {
@@ -298,6 +367,10 @@ class StyleInspector {
       matchedRules.forEach(rule => {
         console.log(`${rule.selector} → ${rule.property}: ${rule.value}`);
       });
+      
+      // Store the hardcoded properties for this element (only once during inspection)
+      this.hardcodedProperties.set(element, matchedRules);
+      
       return true;
     }
 
@@ -434,6 +507,9 @@ class StyleInspector {
     // Add data attribute for identification
     element.setAttribute('data-mds-hardcoded', 'true');
     
+    // Add tooltip functionality
+    this.tooltip.attachTooltip(element, this.hardcodedProperties.get(element));
+    
     // Debug: Check if the element is visible and has the class
     console.log('Highlighting element:', element);
     console.log('Element classes:', element.className);
@@ -444,49 +520,17 @@ class StyleInspector {
     console.log('Element highlighted:', element);
   }
 
-  // addTooltip(element) {
-  //   const tooltip = document.createElement('div');
-  //   tooltip.className = 'mds-style-inspector-tooltip';
-  //   tooltip.textContent = 'Hardcoded CSS value detected';
-  //   tooltip.style.cssText = `
-  //     position: absolute;
-  //     background: #ff4444;
-  //     color: white;
-  //     padding: 4px 8px;
-  //     border-radius: 4px;
-  //     font-size: 12px;
-  //     z-index: 10000;
-  //     pointer-events: none;
-  //     white-space: nowrap;
-  //     opacity: 0;
-  //     transition: opacity 0.2s;
-  //   `;
-    
-  //   document.body.appendChild(tooltip);
-    
-  //   element.addEventListener('mouseenter', () => {
-  //     const rect = element.getBoundingClientRect();
-  //     tooltip.style.left = rect.left + 'px';
-  //     tooltip.style.top = (rect.top - tooltip.offsetHeight - 5) + 'px';
-  //     tooltip.style.opacity = '1';
-  //   });
-    
-  //   element.addEventListener('mouseleave', () => {
-  //     tooltip.style.opacity = '0';
-  //   });
-  // }
-
   clearHighlights() {
     this.highlightedElements.forEach(element => {
       element.classList.remove('mds-style-inspector-highlight');
       element.removeAttribute('data-mds-hardcoded');
+      // Remove tooltip if it exists
+      this.tooltip.removeTooltip(element);
     });
     
     this.highlightedElements.clear();
-    
-    // Remove tooltips
-    const tooltips = document.querySelectorAll('.mds-style-inspector-tooltip');
-    tooltips.forEach(tooltip => tooltip.remove());
+    this.hardcodedProperties.clear(); // Clear stored properties
+    this.tooltip.clearAllTooltips(); // Clear all tooltips
   }
 
   updateStats() {
