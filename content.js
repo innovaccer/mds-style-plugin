@@ -42,7 +42,7 @@ class StyleInspectorTooltip {
     const tooltip = document.createElement('div');
     tooltip.className = 'mds-style-inspector-tooltip';
     tooltip.style.cssText = `
-      position: absolute;
+      position: fixed;
       background: #333;
       color: white;
       padding: 8px;
@@ -67,15 +67,24 @@ class StyleInspectorTooltip {
     const tooltip = this.createTooltip(element, hardcodedRules);
     if (!tooltip) return;
     
-    // Simple mouse events
-    element.addEventListener('mouseenter', () => {
+    // Simple mouse events with proper scroll positioning and propagation control
+    element.addEventListener('mouseenter', (event) => {
+      // Stop propagation to prevent parent elements from triggering their tooltips
+      event.stopPropagation();
+      
+      // Hide all other tooltips first
+      this.hideAllTooltips();
+      
       const rect = element.getBoundingClientRect();
+      tooltip.style.position = 'fixed';
       tooltip.style.left = rect.left + 'px';
       tooltip.style.top = (rect.top - 30) + 'px';
       tooltip.style.opacity = '1';
     });
     
-    element.addEventListener('mouseleave', () => {
+    element.addEventListener('mouseleave', (event) => {
+      // Stop propagation
+      event.stopPropagation();
       tooltip.style.opacity = '0';
     });
     
@@ -93,6 +102,13 @@ class StyleInspectorTooltip {
   clearAllTooltips() {
     const tooltips = document.querySelectorAll('.mds-style-inspector-tooltip');
     tooltips.forEach(tooltip => tooltip.remove());
+  }
+
+  hideAllTooltips() {
+    const tooltips = document.querySelectorAll('.mds-style-inspector-tooltip');
+    tooltips.forEach(tooltip => {
+      tooltip.style.opacity = '0';
+    });
   }
 }
 
