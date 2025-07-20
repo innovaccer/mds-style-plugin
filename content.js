@@ -77,8 +77,37 @@ class StyleInspectorTooltip {
       
       const rect = element.getBoundingClientRect();
       tooltip.style.position = 'fixed';
-      tooltip.style.left = rect.left + 'px';
-      tooltip.style.top = (rect.top - 30) + 'px';
+      
+      // Position tooltip at bottom-right of element
+      let left = rect.right + 10; // 10px to the right of element
+      let top = rect.bottom + 10; // 10px below element
+      
+      // Adjust if tooltip would go off screen
+      const tooltipWidth = 250; // max-width from CSS
+      const tooltipHeight = 200; // approximate height
+      
+      // If tooltip would go off right edge, position it to the left of element
+      if (left + tooltipWidth > window.innerWidth) {
+        left = rect.left - tooltipWidth - 10;
+      }
+      
+      // If tooltip would go off bottom edge, position it above element
+      if (top + tooltipHeight > window.innerHeight) {
+        top = rect.top - tooltipHeight - 10;
+      }
+      
+      // Ensure tooltip doesn't go off left edge
+      if (left < 10) {
+        left = 10;
+      }
+      
+      // Ensure tooltip doesn't go off top edge
+      if (top < 10) {
+        top = 10;
+      }
+      
+      tooltip.style.left = left + 'px';
+      tooltip.style.top = top + 'px';
       tooltip.style.opacity = '1';
     });
     
