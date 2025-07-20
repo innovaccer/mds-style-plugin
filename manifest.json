@@ -1,7 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "MDS Style Inspector",
+  "name": "Style Inspector",
   "version": "1.0.0",
+  "author": "Anuradha Aggarwal",
   "description": "Inspects DOM elements for hardcoded CSS values and highlights them",
   "permissions": [
     "activeTab",
@@ -9,7 +10,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "MDS Style Inspector"
+    "default_title": "Style Inspector"
   },
   "content_scripts": [
     {
