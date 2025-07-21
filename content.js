@@ -6,7 +6,7 @@ if (window.mdsStyleInspector) {
 } else {
   window.mdsStyleInspector = true;
 
-  // Global auto-inspection state
+  // Global auto-inspection state - will be updated from background script
   let globalAutoInspectionEnabled = true;
 
   // Separate Tooltip Module
@@ -211,31 +211,49 @@ if (window.mdsStyleInspector) {
     }
 
     init() {
+      console.log('MDS Style Inspector: Initializing content script...');
+      
       // Listen for messages from popup and background script
       chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         console.log('MDS Style Inspector: Content script received message:', request.action);
         
-        switch (request.action) {
-          case 'startInspection':
-            console.log('MDS Style Inspector: Starting inspection from message');
-            this.startInspection();
-            sendResponse({ success: true, stats: this.stats });
-            break;
-          case 'stopInspection':
-            console.log('MDS Style Inspector: Stopping inspection from message');
-            this.stopInspection();
-            sendResponse({ success: true, stats: this.stats });
-            break;
-          case 'getStatus':
-            console.log('MDS Style Inspector: Returning status:', { isActive: this.isActive, stats: this.stats });
-            sendResponse({ isActive: this.isActive, stats: this.stats });
-            break;
-          case 'testHighlight':
-            console.log('MDS Style Inspector: Running test highlight');
-            this.testHighlight();
-            sendResponse({ success: true });
-            break;
+        try {
+          switch (request.action) {
+            case 'startInspection':
+              console.log('MDS Style Inspector: Starting inspection from message');
+              this.startInspection();
+              sendResponse({ success: true, stats: this.stats });
+              break;
+            case 'stopInspection':
+              console.log('MDS Style Inspector: Stopping inspection from message');
+              this.stopInspection();
+              sendResponse({ success: true, stats: this.stats });
+              break;
+            case 'getStatus':
+              console.log('MDS Style Inspector: Returning status:', { isActive: this.isActive, stats: this.stats });
+              sendResponse({ isActive: this.isActive, stats: this.stats });
+              break;
+            case 'testHighlight':
+              console.log('MDS Style Inspector: Running test highlight');
+              this.testHighlight();
+              sendResponse({ success: true });
+              break;
+            case 'updateAutoInspection':
+              console.log('MDS Style Inspector: Updating auto-inspection setting:', request.isEnabled);
+              globalAutoInspectionEnabled = request.isEnabled;
+              sendResponse({ success: true });
+              break;
+            default:
+              console.log('MDS Style Inspector: Unknown message action:', request.action);
+              sendResponse({ success: false, error: 'Unknown action' });
+              break;
+          }
+        } catch (error) {
+          console.error('MDS Style Inspector: Error handling message:', error);
+          sendResponse({ success: false, error: error.message });
         }
+        
+        return true; // Keep message channel open for async response
       });
       
       // Clean up when page is unloaded
@@ -245,7 +263,7 @@ if (window.mdsStyleInspector) {
       
       // Reset state when page loads to ensure fresh inspection
       window.addEventListener('load', () => {
-        console.log('MDS Style Inspector: Page loaded, resetting state');
+        console.log('Step 2: Style Inspector: Page loaded, resetting state');
         this.isActive = false;
         this.stats.hardcodedCount = 0;
         this.stats.inspectedCount = 0;
@@ -254,16 +272,86 @@ if (window.mdsStyleInspector) {
         this.hardcodedProperties.clear();
         this.pendingElements.clear();
         
-        // Auto-start inspection if enabled
-        if (globalAutoInspectionEnabled !== false) {
-          console.log('MDS Style Inspector: Auto-starting inspection on page load');
-          setTimeout(() => {
-            this.startInspection();
-          }, 1000);
-        }
+        // Get current auto-inspection setting from background script
+        this.getAutoInspectionStatusAndStart();
       });
       
-      console.log('MDS Style Inspector: Content script initialized and ready');
+      console.log('Step 1: Style Inspector: Content script initialized and ready');
+      
+      // Send a ready signal to background script
+      setTimeout(() => {
+        try {
+          chrome.runtime.sendMessage({ action: 'contentScriptReady' }, (response) => {
+            if (chrome.runtime.lastError) {
+              console.log('MDS Style Inspector: Could not notify background script of readiness:', chrome.runtime.lastError.message);
+            } else {
+              console.log('MDS Style Inspector: Background script notified of content script readiness');
+            }
+          });
+        } catch (error) {
+          // Handle extension context invalidation
+          if (error.message && error.message.includes('Extension context invalidated')) {
+            console.log('MDS Style Inspector: Extension context invalidated, skipping ready notification');
+          } else {
+            console.error('MDS Style Inspector: Error sending ready notification:', error);
+          }
+        }
+      }, 100);
+    }
+
+    getAutoInspectionStatusAndStart() {
+      console.log('MDS Style Inspector: Getting auto-inspection status from background...');
+      
+      // Use callback-style instead of Promise to avoid potential issues
+      try {
+        chrome.runtime.sendMessage({ action: 'getAutoInspectionStatus' }, (response) => {
+          if (chrome.runtime.lastError) {
+            console.log('MDS Style Inspector: Could not get auto-inspection status, defaulting to enabled:', chrome.runtime.lastError.message);
+            // Default to enabled if we can't get the status
+            if (globalAutoInspectionEnabled !== false) {
+              console.log('MDS Style Inspector: Auto-starting inspection on page load (default)');
+              setTimeout(() => {
+                this.startInspection();
+              }, 1000);
+            }
+          } else if (response && response.isEnabled !== undefined) {
+            globalAutoInspectionEnabled = response.isEnabled;
+            console.log('MDS Style Inspector: Auto-inspection setting from background:', globalAutoInspectionEnabled);
+            
+            // Auto-start inspection if enabled
+            if (globalAutoInspectionEnabled) {
+              console.log('MDS Style Inspector: Auto-starting inspection on page load');
+              setTimeout(() => {
+                this.startInspection();
+              }, 1000);
+            } else {
+              console.log('MDS Style Inspector: Auto-inspection disabled, not starting');
+            }
+          } else {
+            console.log('MDS Style Inspector: Invalid response from background, defaulting to enabled');
+            // Default to enabled if response is invalid
+            if (globalAutoInspectionEnabled !== false) {
+              console.log('MDS Style Inspector: Auto-starting inspection on page load (default)');
+              setTimeout(() => {
+                this.startInspection();
+              }, 1000);
+            }
+          }
+        });
+      } catch (error) {
+        // Handle extension context invalidation
+        if (error.message && error.message.includes('Extension context invalidated')) {
+          console.log('MDS Style Inspector: Extension context invalidated, defaulting to enabled');
+          if (globalAutoInspectionEnabled !== false) {
+            console.log('MDS Style Inspector: Auto-starting inspection on page load (default)');
+            setTimeout(() => {
+              this.startInspection();
+            }, 1000);
+          }
+        } else {
+          console.error('MDS Style Inspector: Error getting auto-inspection status:', error);
+        }
+      }
     }
 
     cleanup() {
@@ -301,25 +389,6 @@ if (window.mdsStyleInspector) {
       const wasActive = this.isActive;
       this.isActive = true;
       
-      // Test CSS highlighting first
-      console.log('Testing CSS highlighting...');
-      const testElement = document.createElement('div');
-      testElement.textContent = 'TEST HIGHLIGHT';
-      testElement.style.cssText = 'position: fixed; top: 10px; right: 10px; background: white; padding: 10px; border: 1px solid black; z-index: 10000;';
-      document.body.appendChild(testElement);
-      
-      // Apply highlight to test element
-      testElement.classList.add('mds-style-inspector-highlight');
-      testElement.setAttribute('data-mds-hardcoded', 'true');
-      
-      console.log('Test element highlighted, classes:', testElement.className);
-      console.log('Test element computed outline:', window.getComputedStyle(testElement).outline);
-      
-      // Remove test element after 3 seconds
-      setTimeout(() => {
-        testElement.remove();
-      }, 3000);
-      
       // Run inspection on all elements
       const allElements = document.querySelectorAll('*');
       console.log(`Test: Inspecting ${allElements.length} elements`);
@@ -342,7 +411,7 @@ if (window.mdsStyleInspector) {
     }
 
     startInspection() {
-      console.log('MDS Style Inspector: Starting inspection...', { isActive: this.isActive, url: window.location.href });
+      console.log('Step 3: Style Inspector: Starting inspection...', { isActive: this.isActive, url: window.location.href });
       
       // Reset state for new page inspection
       if (this.isActive) {
@@ -935,12 +1004,21 @@ if (window.mdsStyleInspector) {
 
     updateStats() {
       // Send stats update to popup if it's open
-      chrome.runtime.sendMessage({
-        action: 'updateStats',
-        stats: this.stats
-      }).catch(() => {
-        // Ignore errors if popup is not open
-      });
+      try {
+        chrome.runtime.sendMessage({
+          action: 'updateStats',
+          stats: this.stats
+        }).catch(() => {
+          // Ignore errors if popup is not open or extension context is invalid
+        });
+      } catch (error) {
+        // Handle extension context invalidation
+        if (error.message && error.message.includes('Extension context invalidated')) {
+          console.log('MDS Style Inspector: Extension context invalidated, skipping stats update');
+        } else {
+          console.error('MDS Style Inspector: Error updating stats:', error);
+        }
+      }
     }
   }
 
