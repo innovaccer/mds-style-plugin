@@ -14,7 +14,7 @@
 }
 
 .mds-style-inspector-highlight {
-  animation: mds-highlight-pulse 2s ease-in-out infinite;
+  animation: mds-highlight-pulse 2s ease-in-out infinite !important;
 }
 
 /* Force visibility with higher specificity */
@@ -22,4 +22,5 @@
 *[data-mds-hardcoded="true"] {
   outline: 3px dotted #ff4444 !important;
   outline-offset: 2px !important;
-} 
+
+}

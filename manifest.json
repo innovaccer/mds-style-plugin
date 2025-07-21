@@ -6,8 +6,12 @@
   "description": "Inspects DOM elements for hardcoded CSS values and highlights them",
   "permissions": [
     "activeTab",
-    "scripting"
+    "scripting",
+    "tabs"
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_title": "Style Inspector"

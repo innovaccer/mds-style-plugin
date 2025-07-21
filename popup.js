@@ -5,14 +5,41 @@ document.addEventListener('DOMContentLoaded', function() {
   const status = document.getElementById('status');
   const hardcodedCount = document.getElementById('hardcodedCount');
   const inspectedCount = document.getElementById('inspectedCount');
+  const autoToggle = document.getElementById('autoToggle');
+  const autoStatus = document.getElementById('autoStatus');
+
+  // Check auto-inspection status when popup opens
+  chrome.runtime.sendMessage({ action: 'getAutoInspectionStatus' }, function(response) {
+    console.log('Popup: Auto-inspection status response:', response);
+    if (response && response.isEnabled) {
+      console.log('Popup: Enabling auto-inspection UI');
+      updateAutoInspectionUI(true);
+    } else {
+      console.log('Popup: Disabling auto-inspection UI');
+      updateAutoInspectionUI(false);
+    }
+  });
 
   // Check current state when popup opens
   chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+    console.log('Popup: Checking current tab status for tab:', tabs[0].id);
     chrome.tabs.sendMessage(tabs[0].id, {action: 'getStatus'}, function(response) {
+      console.log('Popup: Tab status response:', response);
       if (response && response.isActive) {
         updateUI(true, response.stats);
       } else {
         updateUI(false, { hardcodedCount: 0, inspectedCount: 0 });
+      }
+    });
+  });
+
+  // Auto-inspection toggle
+  autoToggle.addEventListener('click', function() {
+    console.log('Popup: Toggling auto-inspection...');
+    chrome.runtime.sendMessage({ action: 'toggleAutoInspection' }, function(response) {
+      console.log('Popup: Toggle response:', response);
+      if (response) {
+        updateAutoInspectionUI(response.isEnabled);
       }
     });
   });
@@ -62,6 +89,16 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
   });
+
+  function updateAutoInspectionUI(isEnabled) {
+    if (isEnabled) {
+      autoToggle.classList.add('active');
+      autoStatus.textContent = 'Auto-inspection is enabled';
+    } else {
+      autoToggle.classList.remove('active');
+      autoStatus.textContent = 'Auto-inspection is disabled';
+    }
+  }
 
   function updateUI(isActive, stats = {}) {
     if (isActive) {
