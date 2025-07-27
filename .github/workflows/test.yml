@@ -1,0 +1,63 @@
+name: Test and Validate
+
+on:
+  pull_request:
+    branches: [ main, master, develop ]
+  push:
+    branches: [ main, master, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Lint code
+        run: npm run lint
+        
+      - name: Format check
+        run: npx prettier --check "**/*.{js,json,md}"
+        
+      - name: Build extension
+        run: npm run build
+        
+      - name: Package extension
+        run: npm run package
+        
+      - name: Validate package
+        run: |
+          # Check if package was created
+          if [ ! -f dist/*.zip ]; then
+            echo "❌ Package was not created"
+            exit 1
+          fi
+          
+          # Check package size (should be reasonable)
+          PACKAGE_SIZE=$(stat -c%s dist/*.zip)
+          MAX_SIZE=$((5*1024*1024)) # 5MB limit
+          
+          if [ $PACKAGE_SIZE -gt $MAX_SIZE ]; then
+            echo "❌ Package size ($PACKAGE_SIZE bytes) exceeds limit ($MAX_SIZE bytes)"
+            exit 1
+          fi
+          
+          echo "✅ Package validation passed"
+          echo "📦 Package size: $((PACKAGE_SIZE/1024)) KB"
+          
+      - name: Download package for review
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-package-pr-${{ github.event.number }}
+          path: dist/*.zip 

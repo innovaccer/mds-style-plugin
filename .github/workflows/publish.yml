@@ -1,0 +1,101 @@
+name: Publish to Chrome Web Store
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 1.0.1)'
+        required: true
+        type: string
+
+jobs:
+  build-and-package:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            # Extract version from tag
+            VERSION=${GITHUB_REF#refs/tags/}
+            echo "version=${VERSION#v}" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Update package.json version
+        run: |
+          npm version ${{ steps.version.outputs.version }} --no-git-tag-version
+          
+      - name: Build extension
+        run: npm run build
+        
+      - name: Package extension
+        run: npm run package
+        
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chrome-extension-package
+          path: dist/*.zip
+          
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/*.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+  publish-to-chrome-store:
+    needs: build-and-package
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: chrome-extension-package
+          path: dist/
+          
+      - name: Publish to Chrome Web Store
+        uses: trmcnvn/chrome-addon@v2
+        with:
+          extension: ${{ secrets.EXTENSION_ID }}
+          zip: dist/*.zip
+          client-id: ${{ secrets.CLIENT_ID }}
+          client-secret: ${{ secrets.CLIENT_SECRET }}
+          refresh-token: ${{ secrets.REFRESH_TOKEN }}
+          
+      - name: Comment on PR
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚀 Extension version ${{ needs.build-and-package.outputs.version }} has been published to Chrome Web Store!`
+            }) 

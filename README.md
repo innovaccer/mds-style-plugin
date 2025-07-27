@@ -37,6 +37,55 @@ A Chrome browser extension that inspects DOM elements for hardcoded CSS values a
 3. Click "Load unpacked" and select this directory
 4. The extension will be installed and ready to use
 
+## 🚀 Automated Publishing
+
+This project includes a complete automation pipeline for publishing to the Chrome Web Store.
+
+### Quick Start
+
+1. **Setup Chrome Web Store API**:
+   ```bash
+   npm run setup-chrome-store
+   ```
+
+2. **Configure GitHub Secrets** (see [PUBLISHING.md](PUBLISHING.md) for details):
+   - `EXTENSION_ID`: Your Chrome extension ID
+   - `CLIENT_ID`: OAuth 2.0 Client ID
+   - `CLIENT_SECRET`: OAuth 2.0 Client Secret
+   - `REFRESH_TOKEN`: OAuth 2.0 Refresh Token
+
+3. **Publish Automatically**:
+   ```bash
+   # Create a new version tag
+   git tag v1.0.1
+   git push origin v1.0.1
+   ```
+
+### Available Commands
+
+```bash
+# Build and validate extension
+npm run build
+
+# Create package for Chrome Web Store
+npm run package
+
+# Setup Chrome Web Store API (interactive guide)
+npm run setup-chrome-store
+
+# Lint and format code
+npm run lint
+npm run format
+```
+
+### Publishing Methods
+
+- **Automatic**: Push a version tag (e.g., `v1.0.1`) to trigger automated publishing
+- **Manual**: Use GitHub Actions workflow dispatch to publish specific versions
+- **Local**: Run `npm run package` and manually upload the generated zip file
+
+For detailed instructions, see [PUBLISHING.md](PUBLISHING.md).
+
 ## Usage
 
 1. **Activate the Extension**: Click the extension icon in your Chrome toolbar

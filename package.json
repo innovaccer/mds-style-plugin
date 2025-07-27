@@ -1,0 +1,31 @@
+{
+  "name": "style-inspector",
+  "version": "1.0.0",
+  "description": "Chrome extension that inspects DOM elements for hardcoded CSS values and highlights them",
+  "main": "background.js",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "package": "npm run build && node scripts/package.js",
+    "setup-chrome-store": "node scripts/setup-chrome-store.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint . --ext .js",
+    "format": "prettier --write \"**/*.{js,json,md}\""
+  },
+  "keywords": [
+    "chrome-extension",
+    "css",
+    "inspector",
+    "dom",
+    "style"
+  ],
+  "author": "Anuradha Aggarwal",
+  "license": "MIT",
+  "devDependencies": {
+    "archiver": "^6.0.1",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+} 
