@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   const startBtn = document.getElementById('startBtn');
   const stopBtn = document.getElementById('stopBtn');
   // const testBtn = document.getElementById('testBtn');
@@ -9,68 +9,86 @@ document.addEventListener('DOMContentLoaded', function() {
   const autoStatus = document.getElementById('autoStatus');
 
   // Check auto-inspection status when popup opens
-  chrome.runtime.sendMessage({ action: 'getAutoInspectionStatus' }, function(response) {
-    console.log('Popup: Auto-inspection status response:', response);
-    if (response && response.isEnabled) {
-      console.log('Popup: Enabling auto-inspection UI');
-      updateAutoInspectionUI(true);
-    } else {
-      console.log('Popup: Disabling auto-inspection UI');
-      updateAutoInspectionUI(false);
+  chrome.runtime.sendMessage(
+    { action: 'getAutoInspectionStatus' },
+    function (response) {
+      console.log('Popup: Auto-inspection status response:', response);
+      if (response && response.isEnabled) {
+        console.log('Popup: Enabling auto-inspection UI');
+        updateAutoInspectionUI(true);
+      } else {
+        console.log('Popup: Disabling auto-inspection UI');
+        updateAutoInspectionUI(false);
+      }
     }
-  });
+  );
 
   // Check current state when popup opens
-  chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
     console.log('Popup: Checking current tab status for tab:', tabs[0].id);
-    chrome.tabs.sendMessage(tabs[0].id, {action: 'getStatus'}, function(response) {
-      console.log('Popup: Tab status response:', response);
-      if (response && response.isActive) {
-        currentInspectionState = true;
-        updateUI(true, response.stats);
-      } else {
-        currentInspectionState = false;
-        updateUI(false, { hardcodedCount: 0, inspectedCount: 0 });
+    chrome.tabs.sendMessage(
+      tabs[0].id,
+      { action: 'getStatus' },
+      function (response) {
+        console.log('Popup: Tab status response:', response);
+        if (response && response.isActive) {
+          currentInspectionState = true;
+          updateUI(true, response.stats);
+        } else {
+          currentInspectionState = false;
+          updateUI(false, { hardcodedCount: 0, inspectedCount: 0 });
+        }
       }
-    });
+    );
   });
 
   // Auto-inspection toggle
-  autoToggle.addEventListener('click', function() {
+  autoToggle.addEventListener('click', function () {
     console.log('Popup: Toggling auto-inspection...');
-    chrome.runtime.sendMessage({ action: 'toggleAutoInspection' }, function(response) {
-      console.log('Popup: Toggle response:', response);
-      if (response) {
-        updateAutoInspectionUI(response.isEnabled);
-      }
-    });
-  });
-
-  startBtn.addEventListener('click', function() {
-    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-      chrome.tabs.sendMessage(tabs[0].id, {action: 'startInspection'}, function(response) {
-        if (response && response.success) {
-          currentInspectionState = true;
-          updateUI(true, response.stats);
+    chrome.runtime.sendMessage(
+      { action: 'toggleAutoInspection' },
+      function (response) {
+        console.log('Popup: Toggle response:', response);
+        if (response) {
+          updateAutoInspectionUI(response.isEnabled);
         }
-      });
+      }
+    );
+  });
+
+  startBtn.addEventListener('click', function () {
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      chrome.tabs.sendMessage(
+        tabs[0].id,
+        { action: 'startInspection' },
+        function (response) {
+          if (response && response.success) {
+            currentInspectionState = true;
+            updateUI(true, response.stats);
+          }
+        }
+      );
     });
   });
 
-  stopBtn.addEventListener('click', function() {
+  stopBtn.addEventListener('click', function () {
     // Immediately update UI to inactive state
     currentInspectionState = false;
     updateUI(false, { hardcodedCount: 0, inspectedCount: 0 });
-    
-    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-      chrome.tabs.sendMessage(tabs[0].id, {action: 'stopInspection'}, function(response) {
-        if (response && response.success) {
-          // Update stats with the final values from the content script
-          updateUI(false, response.stats);
-        } else {
-          console.log('Stop inspection response:', response);
+
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      chrome.tabs.sendMessage(
+        tabs[0].id,
+        { action: 'stopInspection' },
+        function (response) {
+          if (response && response.success) {
+            // Update stats with the final values from the content script
+            updateUI(false, response.stats);
+          } else {
+            console.log('Stop inspection response:', response);
+          }
         }
-      });
+      );
     });
   });
 
@@ -113,7 +131,7 @@ document.addEventListener('DOMContentLoaded', function() {
   function updateUI(isActive, stats = {}) {
     // Track current inspection state
     currentInspectionState = isActive;
-    
+
     if (isActive) {
       startBtn.style.display = 'none';
       stopBtn.style.display = 'block';
@@ -136,19 +154,21 @@ document.addEventListener('DOMContentLoaded', function() {
   let currentInspectionState = false;
 
   // Listen for updates from content script
-  chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-    if (request.action === 'updateStats') {
-      // Only update UI to active state if inspection is actually active
-      // Otherwise just update the stats without changing the UI state
-      if (currentInspectionState) {
-        updateUI(true, request.stats);
-      } else {
-        // Update stats without changing UI state
-        if (request.stats) {
-          hardcodedCount.textContent = request.stats.hardcodedCount || 0;
-          inspectedCount.textContent = request.stats.inspectedCount || 0;
+  chrome.runtime.onMessage.addListener(
+    function (request, sender, sendResponse) {
+      if (request.action === 'updateStats') {
+        // Only update UI to active state if inspection is actually active
+        // Otherwise just update the stats without changing the UI state
+        if (currentInspectionState) {
+          updateUI(true, request.stats);
+        } else {
+          // Update stats without changing UI state
+          if (request.stats) {
+            hardcodedCount.textContent = request.stats.hardcodedCount || 0;
+            inspectedCount.textContent = request.stats.inspectedCount || 0;
+          }
         }
       }
     }
-  });
-}); 
+  );
+});

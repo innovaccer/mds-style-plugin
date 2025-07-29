@@ -44,6 +44,7 @@ This project includes a complete automation pipeline for publishing to the Chrom
 ### Quick Start
 
 1. **Setup Chrome Web Store API**:
+
    ```bash
    npm run setup-chrome-store
    ```
@@ -100,6 +101,7 @@ For detailed instructions, see [PUBLISHING.md](PUBLISHING.md).
 ## What Gets Detected
 
 ### Hardcoded Values (Will be highlighted):
+
 - `margin: 16px`
 - `padding: 8px`
 - `font-size: 14px`
@@ -112,12 +114,14 @@ For detailed instructions, see [PUBLISHING.md](PUBLISHING.md).
 - `opacity: 0.8`
 
 ### Design Tokens (Will NOT be highlighted):
+
 - `margin: var(--spacing-md)`
 - `color: var(--color-primary)`
 - `font-size: var(--font-size-body)`
 - `background-color: var(--color-background)`
 
 ### User Agent Styles (Will NOT be highlighted):
+
 - Browser default button styles
 - Default form element styles
 - Default heading styles
@@ -157,6 +161,7 @@ The extension uses regex patterns to detect:
 ## Excluded Values
 
 The following values are considered acceptable and won't trigger highlighting:
+
 - `0`, `0px` (zero values)
 - `auto` (automatic values)
 - `none` (no value)
@@ -174,6 +179,7 @@ The following values are considered acceptable and won't trigger highlighting:
 ## Development
 
 ### Project Structure
+
 ```
 mds-style-inspector/
 ├── manifest.json          # Extension manifest
@@ -228,22 +234,26 @@ Use `test-user-agent.html` to test the browser-agnostic user agent detection:
 ## Troubleshooting
 
 ### Extension Not Working
+
 1. Check that the extension is enabled in `chrome://extensions/`
 2. Refresh the page you're inspecting
 3. Check the browser console for any error messages
 
 ### No Elements Highlighted
+
 1. Ensure the page has elements with developer-applied hardcoded CSS values
 2. Check that the inspection is active (green status in popup)
 3. Try refreshing the page and restarting inspection
 4. Verify that elements have actual developer styles, not just user agent defaults
 
 ### Too Many Elements Highlighted
+
 1. The extension now filters out user agent styles automatically using browser-agnostic methods
 2. If you're still seeing too many highlights, check the console for detection logs
 3. The extension logs which styles are being filtered and why
 
 ### Performance Issues
+
 - The extension inspects all DOM elements, which can be resource-intensive on large pages
 - Consider stopping inspection when not needed
 - The extension automatically monitors DOM changes, so it will inspect new elements as they're added
@@ -261,4 +271,4 @@ This project is open source and available under the MIT License.
 
 ## Support
 
-For issues, questions, or feature requests, please open an issue on the GitHub repository. 
+For issues, questions, or feature requests, please open an issue on the GitHub repository.

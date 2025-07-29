@@ -4,11 +4,7 @@
   "version": "1.0.0",
   "author": "Anuradha Aggarwal",
   "description": "Inspects DOM elements for hardcoded CSS values and highlights them",
-  "permissions": [
-    "activeTab",
-    "scripting",
-    "tabs"
-  ],
+  "permissions": ["activeTab", "scripting", "tabs"],
   "background": {
     "service_worker": "background.js"
   },
@@ -28,4 +24,4 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   }
-} 
+}

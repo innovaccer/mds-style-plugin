@@ -24,22 +24,24 @@ This document explains how to use the automated pipeline to publish the Style In
 
 Add these secrets to your GitHub repository (`Settings > Secrets and variables > Actions`):
 
-| Secret Name | Description | How to Get |
-|-------------|-------------|------------|
-| `EXTENSION_ID` | Your Chrome extension ID | From Chrome Web Store Developer Dashboard |
-| `CLIENT_ID` | OAuth 2.0 Client ID | From Google Cloud Console |
-| `CLIENT_SECRET` | OAuth 2.0 Client Secret | From Google Cloud Console |
-| `REFRESH_TOKEN` | OAuth 2.0 Refresh Token | Generated using the credentials above |
+| Secret Name     | Description              | How to Get                                |
+| --------------- | ------------------------ | ----------------------------------------- |
+| `EXTENSION_ID`  | Your Chrome extension ID | From Chrome Web Store Developer Dashboard |
+| `CLIENT_ID`     | OAuth 2.0 Client ID      | From Google Cloud Console                 |
+| `CLIENT_SECRET` | OAuth 2.0 Client Secret  | From Google Cloud Console                 |
+| `REFRESH_TOKEN` | OAuth 2.0 Refresh Token  | Generated using the credentials above     |
 
 ### Setting up Chrome Web Store API
 
 1. **Create a Google Cloud Project**
+
    ```bash
    # Go to https://console.cloud.google.com/
    # Create a new project or select existing one
    ```
 
 2. **Enable Chrome Web Store API**
+
    ```bash
    # In Google Cloud Console:
    # APIs & Services > Library > Search for "Chrome Web Store API"
@@ -47,6 +49,7 @@ Add these secrets to your GitHub repository (`Settings > Secrets and variables >
    ```
 
 3. **Create OAuth 2.0 Credentials**
+
    ```bash
    # APIs & Services > Credentials
    # Create Credentials > OAuth 2.0 Client IDs
@@ -65,6 +68,7 @@ Add these secrets to your GitHub repository (`Settings > Secrets and variables >
 ### Method 1: Automated via GitHub Actions (Recommended)
 
 #### Using Tags (Automatic)
+
 ```bash
 # Create and push a new tag
 git tag v1.0.1
@@ -72,6 +76,7 @@ git push origin v1.0.1
 ```
 
 #### Using Manual Trigger
+
 1. Go to your GitHub repository
 2. Navigate to `Actions` tab
 3. Select `Publish to Chrome Web Store` workflow
@@ -140,6 +145,7 @@ npm run format
 ### Testing Locally
 
 1. **Load in Chrome**
+
    ```bash
    # Open Chrome
    # Go to chrome://extensions/
@@ -165,6 +171,7 @@ The project follows [semantic versioning](https://semver.org/):
 ### Version Updates
 
 1. **Update package.json version**
+
    ```bash
    npm version patch  # 1.0.0 -> 1.0.1
    npm version minor  # 1.0.0 -> 1.1.0
@@ -181,15 +188,17 @@ The project follows [semantic versioning](https://semver.org/):
 ### Common Issues
 
 1. **Build Fails**
+
    ```bash
    # Check for missing files
    npm run build
-   
+
    # Verify manifest.json syntax
    # Ensure all required files exist
    ```
 
 2. **Package Too Large**
+
    ```bash
    # Check for unnecessary files
    # Review .gitignore and package.js exclusions
@@ -235,4 +244,4 @@ unzip -l dist/*.zip
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the LICENSE file for details.

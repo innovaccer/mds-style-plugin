@@ -99,5 +99,7 @@ const scriptPath = path.join(__dirname, 'generate-refresh-token.js');
 if (!fs.existsSync(scriptPath)) {
   fs.writeFileSync(scriptPath, refreshTokenScript);
   console.log('📝 Created scripts/generate-refresh-token.js template');
-  console.log('Edit this file with your CLIENT_ID and CLIENT_SECRET before using');
-} 
+  console.log(
+    'Edit this file with your CLIENT_ID and CLIENT_SECRET before using'
+  );
+}
