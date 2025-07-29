@@ -1,10 +1,14 @@
 {
   "manifest_version": 3,
   "name": "Style Inspector",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "author": "Anuradha Aggarwal",
   "description": "Inspects DOM elements for hardcoded CSS values and highlights them",
-  "permissions": ["activeTab", "scripting", "tabs"],
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "tabs"
+  ],
   "background": {
     "service_worker": "background.js"
   },
@@ -14,9 +18,15 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "css": ["content.css"]
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ]
     }
   ],
   "icons": {

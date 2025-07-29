@@ -4,32 +4,19 @@ const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
 
+// Load publishing configuration
+const config = require('./publish-config');
+
 console.log('📦 Packaging Chrome Extension...');
 
-// Files to include in the package
+// Combine all files to include
 const includeFiles = [
-  'manifest.json',
-  'background.js',
-  'content.js',
-  'content.css',
-  'popup/',
-  'icons/',
+  ...config.requiredFiles,
+  ...config.optionalFiles,
 ];
 
 // Files to exclude from the package
-const excludeFiles = [
-  '.git',
-  'node_modules',
-  'scripts',
-  'tests',
-  'README.md',
-  'INSTALL.md',
-  'package.json',
-  'package-lock.json',
-  '.eslintrc',
-  '.prettierrc',
-  '.github',
-];
+const excludeFiles = config.excludedFiles;
 
 function createPackage() {
   return new Promise((resolve, reject) => {
@@ -51,6 +38,12 @@ function createPackage() {
     output.on('close', () => {
       const size = (archive.pointer() / 1024 / 1024).toFixed(2);
       console.log(`✅ Package created: ${outputPath} (${size} MB)`);
+      
+      // Check package size limit
+      if (parseFloat(size) > config.maxPackageSize) {
+        console.warn(`⚠️  Warning: Package size (${size} MB) exceeds recommended limit (${config.maxPackageSize} MB)`);
+      }
+      
       resolve(outputPath);
     });
 
@@ -66,10 +59,14 @@ function createPackage() {
       if (fs.existsSync(filePath)) {
         const stats = fs.statSync(filePath);
         if (stats.isDirectory()) {
+          console.log(`📁 Adding directory: ${file}`);
           archive.directory(filePath, file);
         } else {
+          console.log(`📄 Adding file: ${file}`);
           archive.file(filePath, { name: file });
         }
+      } else {
+        console.warn(`⚠️  Warning: Required file not found: ${file}`);
       }
     });
 
@@ -78,12 +75,22 @@ function createPackage() {
     const files = fs.readdirSync(rootDir);
 
     files.forEach((file) => {
+      // Skip if file is in includeFiles or excludeFiles
       if (!includeFiles.includes(file) && !excludeFiles.includes(file)) {
-        const filePath = path.join(rootDir, file);
-        const stats = fs.statSync(filePath);
+        // Check if file matches any excluded patterns
+        const isExcludedByPattern = config.excludedPatterns.some(pattern => {
+          const regex = new RegExp(pattern.replace('*', '.*'));
+          return regex.test(file);
+        });
 
-        if (stats.isFile()) {
-          archive.file(filePath, { name: file });
+        if (!isExcludedByPattern) {
+          const filePath = path.join(rootDir, file);
+          const stats = fs.statSync(filePath);
+
+          if (stats.isFile()) {
+            console.log(`📄 Adding additional file: ${file}`);
+            archive.file(filePath, { name: file });
+          }
         }
       }
     });
