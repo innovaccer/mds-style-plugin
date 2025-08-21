@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Style Inspector",
-  "version": "1.0.0",
+  "version": "1.0.0.0",
   "author": "Anuradha Aggarwal",
   "description": "Inspects DOM elements for hardcoded CSS values and highlights them",
   "permissions": [
