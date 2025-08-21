@@ -3,6 +3,36 @@
 
 // Track global auto-inspection state - ENABLED BY DEFAULT
 let globalAutoInspectionEnabled = true;
+let storageInitialized = false;
+
+// Load auto-inspection setting from storage on initialization
+chrome.storage.local.get(['autoInspectionEnabled'], (result) => {
+  if (result.autoInspectionEnabled !== undefined) {
+    globalAutoInspectionEnabled = result.autoInspectionEnabled;
+    console.log('MDS Style Inspector: Loaded auto-inspection setting from storage:', globalAutoInspectionEnabled);
+  } else {
+    // Set default value in storage
+    chrome.storage.local.set({ autoInspectionEnabled: true }, () => {
+      if (chrome.runtime.lastError) {
+        console.error('MDS Style Inspector: Failed to set default auto-inspection setting:', chrome.runtime.lastError.message);
+      } else {
+        console.log('MDS Style Inspector: Set default auto-inspection setting in storage');
+      }
+    });
+  }
+  storageInitialized = true;
+});
+
+// Function to save auto-inspection setting to storage
+function saveAutoInspectionSetting(isEnabled) {
+  chrome.storage.local.set({ autoInspectionEnabled: isEnabled }, () => {
+    if (chrome.runtime.lastError) {
+      console.error('MDS Style Inspector: Failed to save auto-inspection setting:', chrome.runtime.lastError.message);
+    } else {
+      console.log('MDS Style Inspector: Auto-inspection setting saved to storage:', isEnabled);
+    }
+  });
+}
 
 // Function to start inspection on a tab with better error handling
 function startInspectionOnTab(tabId) {
@@ -203,8 +233,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // Return global auto-inspection status
     console.log(
       'MDS Style Inspector: Returning auto-inspection status:',
-      globalAutoInspectionEnabled
+      globalAutoInspectionEnabled,
+      'Storage initialized:',
+      storageInitialized
     );
+    
+    // If storage is not yet initialized, try to get the setting directly from storage
+    if (!storageInitialized) {
+      chrome.storage.local.get(['autoInspectionEnabled'], (result) => {
+        if (result.autoInspectionEnabled !== undefined) {
+          globalAutoInspectionEnabled = result.autoInspectionEnabled;
+          console.log('MDS Style Inspector: Loaded setting from storage during query:', globalAutoInspectionEnabled);
+        }
+        sendResponse({ isEnabled: globalAutoInspectionEnabled });
+      });
+      return true; // Keep message channel open for async response
+    }
+    
     sendResponse({ isEnabled: globalAutoInspectionEnabled });
     return true; // Keep message channel open for async response
   }
@@ -230,6 +275,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     // Notify all content scripts of the setting change
     notifyContentScriptsOfSettingChange();
+
+    // Save the new setting to storage
+    saveAutoInspectionSetting(globalAutoInspectionEnabled);
 
     if (globalAutoInspectionEnabled) {
       // Enable auto-inspection - start on current tab

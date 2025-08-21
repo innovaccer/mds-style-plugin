@@ -1,6 +1,6 @@
 {
   "name": "style-inspector",
-  "version": "1.0.0.0",
+  "version": "1.0.0.1",
   "description": "Chrome extension that inspects DOM elements for hardcoded CSS values and highlights them",
   "main": "background.js",
   "scripts": {

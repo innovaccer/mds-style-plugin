@@ -349,18 +349,11 @@ if (window.mdsStyleInspector) {
           (response) => {
             if (chrome.runtime.lastError) {
               console.log(
-                'MDS Style Inspector: Could not get auto-inspection status, defaulting to enabled:',
+                'MDS Style Inspector: Could not get auto-inspection status from background, trying storage:',
                 chrome.runtime.lastError.message
               );
-              // Default to enabled if we can't get the status
-              if (globalAutoInspectionEnabled !== false) {
-                console.log(
-                  'MDS Style Inspector: Auto-starting inspection on page load (default)'
-                );
-                setTimeout(() => {
-                  this.startInspection();
-                }, 1000);
-              }
+              // Try to get setting from storage as fallback
+              this.getAutoInspectionFromStorage();
             } else if (response && response.isEnabled !== undefined) {
               globalAutoInspectionEnabled = response.isEnabled;
               console.log(
@@ -383,17 +376,10 @@ if (window.mdsStyleInspector) {
               }
             } else {
               console.log(
-                'MDS Style Inspector: Invalid response from background, defaulting to enabled'
+                'MDS Style Inspector: Invalid response from background, trying storage'
               );
-              // Default to enabled if response is invalid
-              if (globalAutoInspectionEnabled !== false) {
-                console.log(
-                  'MDS Style Inspector: Auto-starting inspection on page load (default)'
-                );
-                setTimeout(() => {
-                  this.startInspection();
-                }, 1000);
-              }
+              // Try to get setting from storage as fallback
+              this.getAutoInspectionFromStorage();
             }
           }
         );
@@ -404,22 +390,73 @@ if (window.mdsStyleInspector) {
           error.message.includes('Extension context invalidated')
         ) {
           console.log(
-            'MDS Style Inspector: Extension context invalidated, defaulting to enabled'
+            'MDS Style Inspector: Extension context invalidated, trying storage'
           );
-          if (globalAutoInspectionEnabled !== false) {
-            console.log(
-              'MDS Style Inspector: Auto-starting inspection on page load (default)'
-            );
-            setTimeout(() => {
-              this.startInspection();
-            }, 1000);
-          }
+          this.getAutoInspectionFromStorage();
         } else {
           console.error(
             'MDS Style Inspector: Error getting auto-inspection status:',
             error
           );
+          // Try storage as fallback
+          this.getAutoInspectionFromStorage();
         }
+      }
+    }
+
+    getAutoInspectionFromStorage() {
+      console.log('MDS Style Inspector: Getting auto-inspection setting from storage...');
+      
+      try {
+        chrome.storage.local.get(['autoInspectionEnabled'], (result) => {
+          if (chrome.runtime.lastError) {
+            console.log(
+              'MDS Style Inspector: Could not get setting from storage, not starting inspection:',
+              chrome.runtime.lastError.message
+            );
+            // Don't start inspection if we can't get the setting from storage
+            console.log(
+              'MDS Style Inspector: Auto-inspection status unknown, not starting'
+            );
+          } else if (result.autoInspectionEnabled !== undefined) {
+            globalAutoInspectionEnabled = result.autoInspectionEnabled;
+            console.log(
+              'MDS Style Inspector: Auto-inspection setting from storage:',
+              globalAutoInspectionEnabled
+            );
+
+            // Auto-start inspection if enabled
+            if (globalAutoInspectionEnabled) {
+              console.log(
+                'MDS Style Inspector: Auto-starting inspection on page load'
+              );
+              setTimeout(() => {
+                this.startInspection();
+              }, 1000);
+            } else {
+              console.log(
+                'MDS Style Inspector: Auto-inspection disabled, not starting'
+              );
+            }
+          } else {
+            console.log(
+              'MDS Style Inspector: No setting in storage, not starting inspection'
+            );
+            // Don't start inspection if no setting in storage
+            console.log(
+              'MDS Style Inspector: Auto-inspection status unknown, not starting'
+            );
+          }
+        });
+      } catch (error) {
+        console.error(
+          'MDS Style Inspector: Error getting setting from storage:',
+          error
+        );
+        // Don't start inspection if storage access fails
+        console.log(
+          'MDS Style Inspector: Auto-inspection status unknown, not starting'
+        );
       }
     }
 

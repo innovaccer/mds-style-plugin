@@ -13,12 +13,34 @@ document.addEventListener('DOMContentLoaded', function () {
     { action: 'getAutoInspectionStatus' },
     function (response) {
       console.log('Popup: Auto-inspection status response:', response);
-      if (response && response.isEnabled) {
-        console.log('Popup: Enabling auto-inspection UI');
-        updateAutoInspectionUI(true);
+      if (response && response.isEnabled !== undefined) {
+        if (response.isEnabled) {
+          console.log('Popup: Enabling auto-inspection UI');
+          updateAutoInspectionUI(true);
+        } else {
+          console.log('Popup: Disabling auto-inspection UI');
+          updateAutoInspectionUI(false);
+        }
       } else {
-        console.log('Popup: Disabling auto-inspection UI');
-        updateAutoInspectionUI(false);
+        console.log('Popup: No response from background, trying storage...');
+        // Fallback to storage
+        chrome.storage.local.get(['autoInspectionEnabled'], (result) => {
+          if (chrome.runtime.lastError) {
+            console.log('Popup: Could not get setting from storage, showing as disabled:', chrome.runtime.lastError.message);
+            updateAutoInspectionUI(false);
+          } else if (result.autoInspectionEnabled !== undefined) {
+            if (result.autoInspectionEnabled) {
+              console.log('Popup: Enabling auto-inspection UI from storage');
+              updateAutoInspectionUI(true);
+            } else {
+              console.log('Popup: Disabling auto-inspection UI from storage');
+              updateAutoInspectionUI(false);
+            }
+          } else {
+            console.log('Popup: No setting in storage, showing as disabled');
+            updateAutoInspectionUI(false);
+          }
+        });
       }
     }
   );
